@@ -1,106 +1,366 @@
-import { useMemo, useState } from 'react'
-import { AlarmClock, ArrowRight, Bell, Bot, CalendarDays, Check, CheckSquare, ChevronLeft, ChevronRight, CircleHelp, FileText, LayoutDashboard, LockKeyhole, LogOut, Menu, MessageSquare, MoreHorizontal, Paperclip, Plus, Search, Send, Settings, Shield, ShieldCheck, Sparkles, Upload, Users, X, Eye, EyeOff, BookOpen, Trash2, Pencil, CheckCircle2 } from 'lucide-react'
-import { initialEvents, initialFacts, initialReplies, navItems, type NavKey } from './data/mockData'
-import { clearMockStorage, useMockStorage } from './services/mockStorage'
+import { useMemo, useState } from "react";
+import { Bot, CalendarDays, FileText, LayoutDashboard, LogOut, Menu, Plus, Settings, Shield, X, CheckCircle2 } from "lucide-react";
+import { initialEvents, initialFacts, initialReplies, navItems, type NavKey } from "./data/mockData";
+import { clearMockStorage, useMockStorage } from "./services/mockStorage";
+import type { EventItem, Fact, Reply } from "./utils/types";
+import { Brand, Header } from "./components/ui";
+import { InviteModal, EventModal, HelpModal } from "./components/ui";
+import { AuthScreen } from "./views/AuthScreen/AuthScreen";
+import { Dashboard } from "./views/Dashboard/Dashboard";
+import { AddKnowledge } from "./views/AddKnowledge/AddKnowledge";
+import { KnowledgeReview } from "./views/KnowledgeReview/KnowledgeReview";
+import { Assistant } from "./views/Assistant/Assistant";
+import { CalendarPage } from "./views/CalendarPage/CalendarPage";
+import { PrivacyPage } from "./views/PrivacyPage/PrivacyPage";
+import { SettingsPage } from "./views/SettingsPage/SettingsPage";
 
-type EventItem = (typeof initialEvents)[number]
-type Fact = (typeof initialFacts)[number]
-type Reply = (typeof initialReplies)[number]
-
-const icons: Record<NavKey, typeof LayoutDashboard> = { Dashboard: LayoutDashboard, 'Add Knowledge': Plus, 'Knowledge Review': FileText, Assistant: Bot, Calendar: CalendarDays, Privacy: Shield, 'Assistant Settings': Settings }
-
-function Brand({ small = false }: { small?: boolean }) { return <div className="brand"><span className="brand-mark"><Bot size={21}/></span><span>CloneBot</span>{!small && <span className="version">v1.0</span>}</div> }
-function Button({ children, variant = 'primary', onClick, className = '', type = 'button' }: { children: React.ReactNode; variant?: 'primary' | 'secondary' | 'quiet' | 'danger'; onClick?: () => void; className?: string; type?: 'button' | 'submit' }) { return <button type={type} className={`button ${variant} ${className}`} onClick={onClick}>{children}</button> }
-function Switch({ checked, onChange, label, disabled=false }: { checked: boolean; onChange: (next: boolean) => void; label?: string; disabled?: boolean }) { return <button className={`switch ${checked ? 'on' : ''}`} role="switch" aria-checked={checked} aria-label={label ?? 'Toggle setting'} onClick={() => onChange(!checked)} disabled={disabled}><span/></button> }
-function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) { return <section className={`card ${className}`}>{children}</section> }
-function Header({ title, subtitle, onHelp }: { title: string; subtitle: string; onHelp: () => void }) { return <header className="page-header"><div><h1>{title}</h1><p>{subtitle}</p></div><div className="header-tools"><label className="global-search"><Search size={17}/><input placeholder="Search knowledge or replies…"/><kbd>⌘ K</kbd></label><button className="help-button" onClick={onHelp} aria-label="Help"><CircleHelp size={18}/></button><button className="avatar">J</button></div></header> }
+const icons: Record<NavKey, typeof LayoutDashboard> = {
+  Dashboard: LayoutDashboard,
+  "Add Knowledge": Plus,
+  "Knowledge Review": FileText,
+  Assistant: Bot,
+  Calendar: CalendarDays,
+  Privacy: Shield,
+  "Assistant Settings": Settings,
+};
 
 export default function App() {
-  const [page, setPage] = useState<NavKey>('Dashboard')
-  const [signedIn, setSignedIn] = useState(false)
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [facts, setFacts] = useMockStorage<Fact[]>('facts', initialFacts)
-  const [events, setEvents] = useMockStorage<EventItem[]>('events', initialEvents)
-  const [replies, setReplies] = useMockStorage<Reply[]>('replies', initialReplies)
-  const [modal, setModal] = useState<'invite' | 'event' | 'help' | null>(null)
-  const [toast, setToast] = useState('')
-  const [activeFilter, setActiveFilter] = useState('All')
-  const [chatText, setChatText] = useState('')
-  const [draftEvent, setDraftEvent] = useState<EventItem | null>(null)
-  const [uploadName, setUploadName] = useState('')
-  const [assistantOn, setAssistantOn] = useMockStorage('assistantOn', true)
-  const [replyMode, setReplyMode] = useMockStorage('replyMode', 'Approval mode')
-  const [learning, setLearning] = useMockStorage('learning', true)
-  const [personalize, setPersonalize] = useMockStorage('personalize', true)
-  const [allowTypes, setAllowTypes] = useMockStorage('allowTypes', { notes: true, whatsapp: true, pdf: false, word: true })
-  const [keepFiles, setKeepFiles] = useMockStorage('keepFiles', false)
-  const [keepSigned, setKeepSigned] = useState(true)
-  const filteredFacts = useMemo(() => activeFilter === 'All' ? facts : facts.filter(f => f.type === activeFilter), [facts, activeFilter])
+  const [page, setPage] = useState<NavKey>("Dashboard");
+  const [signedIn, setSignedIn] = useState(false);
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [facts, setFacts] = useMockStorage<Fact[]>("facts", initialFacts);
+  const [events, setEvents] = useMockStorage<EventItem[]>(
+    "events",
+    initialEvents,
+  );
+  const [replies, setReplies] = useMockStorage<Reply[]>(
+    "replies",
+    initialReplies,
+  );
+  const [modal, setModal] = useState<"invite" | "event" | "help" | null>(null);
+  const [toast, setToast] = useState("");
+  const [activeFilter, setActiveFilter] = useState("All");
+  const [chatText, setChatText] = useState("");
+  const [draftEvent, setDraftEvent] = useState<EventItem | null>(null);
+  const [uploadName, setUploadName] = useState("");
+  const [assistantOn, setAssistantOn] = useMockStorage("assistantOn", true);
+  const [replyMode, setReplyMode] = useMockStorage(
+    "replyMode",
+    "Approval mode",
+  );
+  const [learning, setLearning] = useMockStorage("learning", true);
+  const [personalize, setPersonalize] = useMockStorage("personalize", true);
+  const [allowTypes, setAllowTypes] = useMockStorage("allowTypes", {
+    notes: true,
+    whatsapp: true,
+    pdf: false,
+    word: true,
+  });
+  const [keepFiles, setKeepFiles] = useMockStorage("keepFiles", false);
+  const [keepSigned, setKeepSigned] = useState(true);
+  const filteredFacts = useMemo(
+    () =>
+      activeFilter === "All"
+        ? facts
+        : facts.filter((f) => f.type === activeFilter),
+    [facts, activeFilter],
+  );
 
-  const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 2600) }
-  const openEvent = (event?: EventItem) => { setDraftEvent(event ?? { id: Date.now(), title: '', date: '2026-10-09', time: '3:00 PM', color: 'purple', reminder: '30 minutes before' }); setModal('event') }
-  const removeFact = (id: number) => setFacts(items => items.filter(item => item.id !== id))
-  const approveFact = (id: number) => { const fact = facts.find(item => item.id === id); removeFact(id); notify(`${fact?.type ?? 'Item'} approved and saved`) }
-  const sendReply = (id: number) => { setReplies(items => items.filter(item => item.id !== id)); notify('Reply approved and sent') }
-  const saveEvent = () => { if (!draftEvent?.title.trim()) return notify('Add an event title first'); setEvents(items => [draftEvent, ...items.filter(item => item.id !== draftEvent.id)]); setModal(null); notify('Event saved to your calendar') }
+  const notify = (message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(""), 2600);
+  };
+  const openEvent = (event?: EventItem) => {
+    setDraftEvent(
+      event ?? {
+        id: Date.now(),
+        title: "",
+        date: "2026-10-09",
+        time: "3:00 PM",
+        color: "purple",
+        reminder: "30 minutes before",
+      },
+    );
+    setModal("event");
+  };
+  const removeFact = (id: number) =>
+    setFacts((items) => items.filter((item) => item.id !== id));
+  const approveFact = (id: number) => {
+    const fact = facts.find((item) => item.id === id);
+    removeFact(id);
+    notify(`${fact?.type ?? "Item"} approved and saved`);
+  };
+  const sendReply = (id: number) => {
+    setReplies((items) => items.filter((item) => item.id !== id));
+    notify("Reply approved and sent");
+  };
+  const saveEvent = () => {
+    if (!draftEvent?.title.trim()) return notify("Add an event title first");
+    setEvents((items) => [
+      draftEvent,
+      ...items.filter((item) => item.id !== draftEvent.id),
+    ]);
+    setModal(null);
+    notify("Event saved to your calendar");
+  };
 
-  if (!signedIn) return <AuthScreen mode={authMode} setMode={setAuthMode} onSubmit={() => { setSignedIn(true); setPage('Dashboard') }} keepSigned={keepSigned} setKeepSigned={setKeepSigned}/>
+  if (!signedIn)
+    return (
+      <AuthScreen
+        mode={authMode}
+        setMode={setAuthMode}
+        onSubmit={() => {
+          setSignedIn(true);
+          setPage("Dashboard");
+        }}
+        keepSigned={keepSigned}
+        setKeepSigned={setKeepSigned}
+      />
+    );
 
-  const titleMap: Record<NavKey, string> = { Dashboard: 'Good evening, Jawad', 'Add Knowledge': 'Add knowledge', 'Knowledge Review': 'Knowledge review', Assistant: 'Assistant', Calendar: 'Calendar and reminders', Privacy: 'Privacy and data control', 'Assistant Settings': 'Assistant settings' }
-  const subMap: Record<NavKey, string> = { Dashboard: 'Monday, October 9, 2026', 'Add Knowledge': 'Feed your assistant context and facts to personalize its reply suggestions.', 'Knowledge Review': 'Verify and approve facts extracted from your latest knowledge uploads.', Assistant: 'Review conversations and decide how your assistant responds.', Calendar: 'Confirmed events from your chats, documents and notes.', Privacy: 'You own your data. Decide what is processed, kept and learned.', 'Assistant Settings': 'Decide how your assistant behaves and uses data for you.' }
+  const titleMap: Record<NavKey, string> = {
+    Dashboard: "Good evening, Jawad",
+    "Add Knowledge": "Add knowledge",
+    "Knowledge Review": "Knowledge review",
+    Assistant: "Assistant",
+    Calendar: "Calendar and reminders",
+    Privacy: "Privacy and data control",
+    "Assistant Settings": "Assistant settings",
+  };
+  const subMap: Record<NavKey, string> = {
+    Dashboard: "Monday, October 9, 2026",
+    "Add Knowledge":
+      "Feed your assistant context and facts to personalize its reply suggestions.",
+    "Knowledge Review":
+      "Verify and approve facts extracted from your latest knowledge uploads.",
+    Assistant: "Review conversations and decide how your assistant responds.",
+    Calendar: "Confirmed events from your chats, documents and notes.",
+    Privacy: "You own your data. Decide what is processed, kept and learned.",
+    "Assistant Settings":
+      "Decide how your assistant behaves and uses data for you.",
+  };
 
-  return <div className="app-shell">
-    <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}><div className="sidebar-top"><Brand/><button className="sidebar-close" onClick={() => setSidebarOpen(false)}><X/></button></div><nav>{navItems.map(item => { const Icon = icons[item]; return <button key={item} className={`nav-item ${page === item ? 'active' : ''}`} onClick={() => { setPage(item); setSidebarOpen(false) }}><Icon size={19}/><span>{item}</span>{item === 'Assistant' && replies.length > 0 && <b className="nav-count">{replies.length}</b>}</button> })}</nav><div className="sidebar-profile"><div className="profile-pic">J</div><div><strong>Jawad Tariq</strong><small>Personal workspace</small></div><button className="icon-button" title="Sign out" onClick={() => setSignedIn(false)}><LogOut size={17}/></button></div></aside>
-    {sidebarOpen && <button className="sidebar-scrim" onClick={() => setSidebarOpen(false)} aria-label="Close navigation"/>}
-    <main className="main-area"><Header title={titleMap[page]} subtitle={subMap[page]} onHelp={() => setModal('help')}/><button className="mobile-menu" onClick={() => setSidebarOpen(true)}><Menu/></button><div className="page-content">{page === 'Dashboard' && <Dashboard facts={facts} events={events} replies={replies} assistantOn={assistantOn} setPage={setPage} onInvite={() => setModal('invite')}/>} {page === 'Add Knowledge' && <AddKnowledge uploadName={uploadName} setUploadName={setUploadName} keepFiles={keepFiles} setKeepFiles={setKeepFiles} onProcess={(text) => { if (!text) return notify('Choose a file or add a note first'); setFacts(items => [{ id: Date.now(), type: 'Fact', text: `Added from ${text}`, source: 'New upload · just now' }, ...items]); setUploadName(''); notify('Information added to your review queue') }}/>} {page === 'Knowledge Review' && <KnowledgeReview facts={filteredFacts} activeFilter={activeFilter} setActiveFilter={setActiveFilter} onApprove={approveFact} onEdit={(f) => { setDraftEvent({ id: f.id, title: f.text, date: '2026-10-09', time: '3:00 PM', color: 'purple', reminder: '30 minutes before' }); setModal('event') }} onDismiss={removeFact} onEventSave={() => openEvent()}/>} {page === 'Assistant' && <Assistant replies={replies} onSend={sendReply} onDismiss={(id) => { setReplies(items => items.filter(item => item.id !== id)); notify('Draft dismissed') }} onInvite={() => setModal('invite')} chatText={chatText} setChatText={setChatText} onSuggest={() => { if (!chatText.trim()) return; setReplies(items => [{ id: Date.now(), name: 'New conversation', message: chatText, draft: 'I’ll review this and get back to you soon.', mode: replyMode.startsWith('Approval') ? 'Approval' : 'Automatic' }, ...items]); setChatText(''); notify('Reply draft created') }}/>} {page === 'Calendar' && <CalendarPage events={events} onNew={() => openEvent()} onEdit={openEvent} onDelete={(id) => { setEvents(items => items.filter(item => item.id !== id)); notify('Event removed') }}/>} {page === 'Privacy' && <PrivacyPage keepFiles={keepFiles} setKeepFiles={setKeepFiles} learning={learning} setLearning={setLearning} personalize={personalize} setPersonalize={setPersonalize} factsCount={127} onDelete={(what) => notify(`${what} deleted from this demo`)}/>} {page === 'Assistant Settings' && <SettingsPage assistantOn={assistantOn} setAssistantOn={setAssistantOn} replyMode={replyMode} setReplyMode={setReplyMode} allowTypes={allowTypes} setAllowTypes={setAllowTypes} learning={learning} setLearning={setLearning} personalize={personalize} setPersonalize={setPersonalize} onSave={() => notify('Settings saved')}/>}</div></main>
-    {modal === 'invite' && <InviteModal onClose={() => setModal(null)} onSubmit={() => { setModal(null); notify('Invitation prepared in this demo') }}/>} {modal === 'event' && draftEvent && <EventModal event={draftEvent} setEvent={setDraftEvent} onClose={() => setModal(null)} onSave={saveEvent}/>} {modal === 'help' && <HelpModal onClose={() => setModal(null)} onReset={() => { clearMockStorage(); window.location.reload() }}/>} {toast && <div className="toast"><CheckCircle2 size={18}/>{toast}</div>}
-  </div>
+  return (
+    <div className="app-shell">
+      <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
+        <div className="sidebar-top">
+          <Brand />
+          <button
+            className="sidebar-close"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X />
+          </button>
+        </div>
+        <nav>
+          {navItems.map((item) => {
+            const Icon = icons[item];
+            return (
+              <button
+                key={item}
+                className={`nav-item ${page === item ? "active" : ""}`}
+                onClick={() => {
+                  setPage(item);
+                  setSidebarOpen(false);
+                }}
+              >
+                <Icon size={19} />
+                <span>{item}</span>
+                {item === "Assistant" && replies.length > 0 && (
+                  <b className="nav-count">{replies.length}</b>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="sidebar-profile">
+          <div className="profile-pic">J</div>
+          <div>
+            <strong>Jawad Tariq</strong>
+            <small>Personal workspace</small>
+          </div>
+          <button
+            className="icon-button"
+            title="Sign out"
+            onClick={() => setSignedIn(false)}
+          >
+            <LogOut size={17} />
+          </button>
+        </div>
+      </aside>
+      {sidebarOpen && (
+        <button
+          className="sidebar-scrim"
+          onClick={() => setSidebarOpen(false)}
+          aria-label="Close navigation"
+        />
+      )}
+      <main className="main-area">
+        <Header
+          title={titleMap[page]}
+          subtitle={subMap[page]}
+          onHelp={() => setModal("help")}
+        />
+        <button className="mobile-menu" onClick={() => setSidebarOpen(true)}>
+          <Menu />
+        </button>
+        <div className="page-content">
+          {page === "Dashboard" && (
+            <Dashboard
+              facts={facts}
+              events={events}
+              replies={replies}
+              assistantOn={assistantOn}
+              setPage={setPage}
+              onInvite={() => setModal("invite")}
+            />
+          )}{" "}
+          {page === "Add Knowledge" && (
+            <AddKnowledge
+              uploadName={uploadName}
+              setUploadName={setUploadName}
+              keepFiles={keepFiles}
+              setKeepFiles={setKeepFiles}
+              onProcess={(text) => {
+                if (!text) return notify("Choose a file or add a note first");
+                setFacts((items) => [
+                  {
+                    id: Date.now(),
+                    type: "Fact",
+                    text: `Added from ${text}`,
+                    source: "New upload · just now",
+                  },
+                  ...items,
+                ]);
+                setUploadName("");
+                notify("Information added to your review queue");
+              }}
+            />
+          )}{" "}
+          {page === "Knowledge Review" && (
+            <KnowledgeReview
+              facts={filteredFacts}
+              activeFilter={activeFilter}
+              setActiveFilter={setActiveFilter}
+              onApprove={approveFact}
+              onEdit={(f) => {
+                setDraftEvent({
+                  id: f.id,
+                  title: f.text,
+                  date: "2026-10-09",
+                  time: "3:00 PM",
+                  color: "purple",
+                  reminder: "30 minutes before",
+                });
+                setModal("event");
+              }}
+              onDismiss={removeFact}
+              onEventSave={() => openEvent()}
+            />
+          )}{" "}
+          {page === "Assistant" && (
+            <Assistant
+              replies={replies}
+              onSend={sendReply}
+              onDismiss={(id) => {
+                setReplies((items) => items.filter((item) => item.id !== id));
+                notify("Draft dismissed");
+              }}
+              onInvite={() => setModal("invite")}
+              chatText={chatText}
+              setChatText={setChatText}
+              onSuggest={() => {
+                if (!chatText.trim()) return;
+                setReplies((items) => [
+                  {
+                    id: Date.now(),
+                    name: "New conversation",
+                    message: chatText,
+                    draft: "I’ll review this and get back to you soon.",
+                    mode: replyMode.startsWith("Approval")
+                      ? "Approval"
+                      : "Automatic",
+                  },
+                  ...items,
+                ]);
+                setChatText("");
+                notify("Reply draft created");
+              }}
+            />
+          )}{" "}
+          {page === "Calendar" && (
+            <CalendarPage
+              events={events}
+              onNew={() => openEvent()}
+              onEdit={openEvent}
+              onDelete={(id) => {
+                setEvents((items) => items.filter((item) => item.id !== id));
+                notify("Event removed");
+              }}
+            />
+          )}{" "}
+          {page === "Privacy" && (
+            <PrivacyPage
+              keepFiles={keepFiles}
+              setKeepFiles={setKeepFiles}
+              learning={learning}
+              setLearning={setLearning}
+              personalize={personalize}
+              setPersonalize={setPersonalize}
+              factsCount={127}
+              onDelete={(what) => notify(`${what} deleted from this demo`)}
+            />
+          )}{" "}
+          {page === "Assistant Settings" && (
+            <SettingsPage
+              assistantOn={assistantOn}
+              setAssistantOn={setAssistantOn}
+              replyMode={replyMode}
+              setReplyMode={setReplyMode}
+              allowTypes={allowTypes}
+              setAllowTypes={setAllowTypes}
+              learning={learning}
+              setLearning={setLearning}
+              personalize={personalize}
+              setPersonalize={setPersonalize}
+              onSave={() => notify("Settings saved")}
+            />
+          )}
+        </div>
+      </main>
+      {modal === "invite" && (
+        <InviteModal
+          onClose={() => setModal(null)}
+          onSubmit={() => {
+            setModal(null);
+            notify("Invitation prepared in this demo");
+          }}
+        />
+      )}{" "}
+      {modal === "event" && draftEvent && (
+        <EventModal
+          event={draftEvent}
+          setEvent={setDraftEvent}
+          onClose={() => setModal(null)}
+          onSave={saveEvent}
+        />
+      )}{" "}
+      {modal === "help" && (
+        <HelpModal
+          onClose={() => setModal(null)}
+          onReset={() => {
+            clearMockStorage();
+            window.location.reload();
+          }}
+        />
+      )}{" "}
+      {toast && (
+        <div className="toast">
+          <CheckCircle2 size={18} />
+          {toast}
+        </div>
+      )}
+    </div>
+  );
 }
-
-function AuthScreen({ mode, setMode, onSubmit, keepSigned, setKeepSigned }: { mode: 'signin'|'signup'; setMode: (m:'signin'|'signup')=>void; onSubmit:()=>void; keepSigned:boolean; setKeepSigned:(v:boolean)=>void }) {
-  const [show, setShow] = useState(false)
-  return <div className="auth-layout"><section className="auth-pitch"><Brand small/><div className="pitch-copy"><span className="eyebrow">PRIVATE BY DESIGN</span><h1>{mode === 'signin' ? 'Your AI-powered digital self' : 'Set up your assistant in three steps'}</h1><p>A private assistant that learns only what you choose to share, drafts replies in context, and keeps your commitments on track.</p></div><div className="pitch-features">{[[LockKeyhole,'Knowledge Privacy','You decide what files or texts your Clone learns.'],[CheckSquare,'Reply Approval Control','CloneBot drafts replies, but you click send.'],[AlarmClock,'Event Reminders','Never forget a commitment made in chat again.']].map(([Icon,title,copy]: any)=><div className="pitch-feature" key={title}><span><Icon size={20}/></span><div><strong>{title}</strong><small>{copy}</small></div></div>)}</div><div className="auth-foot">Your knowledge stays under your control</div></section><section className="auth-side"><form className="auth-card" onSubmit={e=>{e.preventDefault();onSubmit()}}>{mode === 'signin' && <div className="auth-tabs"><button type="button" className="selected" onClick={()=>setMode('signin')}>Sign in</button><button type="button" onClick={()=>setMode('signup')}>Create account</button></div>}<div className="auth-title"><h2>{mode === 'signin'?'Welcome back':'Create your account'}</h2><p>{mode === 'signin'?'Enter your credentials to access your digital clone.':'Only you can see what your assistant learns.'}</p></div>{mode === 'signup'&&<label>Full name<input placeholder="Jawad Tariq" required/></label>}<label>Email address<input type="email" placeholder="jawad@example.com" required/></label><label>Password<span className="password-wrap"><input type={show?'text':'password'} placeholder="Enter your password" required minLength={6}/><button type="button" onClick={()=>setShow(!show)}>{show?<EyeOff size={17}/>:<Eye size={17}/>}</button></span></label>{mode==='signup'&&<label>Confirm password<input type="password" placeholder="Confirm your password" required minLength={6}/></label>}{mode==='signin'?<><div className="auth-row"><label className="check-label"><input type="checkbox" checked={keepSigned} onChange={e=>setKeepSigned(e.target.checked)}/>Keep me signed in</label><button type="button" className="text-button" onClick={()=>alert('Password reset is not connected in the mock-data version.')}>Forgot password?</button></div><Button type="submit" className="full">Sign in</Button><p className="auth-switch">New to CloneBot? <button type="button" onClick={()=>setMode('signup')}>Create an account</button></p></>:<><label className="check-label consent"><input type="checkbox" required/>I agree to the <button type="button" className="text-button">Privacy Policy</button> and authorize CloneBot to process my selected knowledge.</label><Button type="submit" className="full">Create account</Button><p className="auth-switch">Already have an account? <button type="button" onClick={()=>setMode('signin')}>Back to sign-in</button></p></>}<div className="auth-security"><ShieldCheck size={16}/><span>Demo interface. Authentication will connect when the backend is ready.</span></div></form></section></div>
-}
-
-function Dashboard({ facts, events, replies, assistantOn, setPage, onInvite }: { facts:Fact[]; events:EventItem[]; replies:Reply[]; assistantOn:boolean; setPage:(p:NavKey)=>void; onInvite:()=>void }) {
-  return <><div className="status-banner"><span className={`status-dot ${assistantOn?'':'off'}`}/><div><strong>Assistant is {assistantOn?'active':'paused'}</strong><p>{assistantOn?'Operating in human-approval drafting mode.':'It will not process new knowledge or draft replies.'}</p></div><div className="banner-actions"><span className="pill blue-pill">{replies.length} pending replies</span><Button onClick={()=>setPage('Assistant')}>Review replies</Button></div></div><div className="stats-grid">{[[BookOpen,'Knowledge items','127','+14 this week','green'],[MessageSquare,'Pending replies',String(replies.length),'Review drafts',''],[CalendarDays,'Upcoming events',String(events.length),'View calendar','green'],[FileText,'Items to review',String(facts.length),'From recent uploads','orange']].map(([Icon,label,value,foot,tone]:any)=><Card className="stat-card" key={label}><div className="stat-label"><Icon size={16}/>{label}</div><strong className="stat-value">{value}</strong><small className={tone}>{foot}</small></Card>)}</div><div className="dashboard-grid"><Card className="commitments"><div className="card-heading"><div><h3>Upcoming commitments</h3><p>Things your assistant is keeping track of</p></div><button className="text-button" onClick={()=>setPage('Calendar')}>View calendar <ArrowRight size={15}/></button></div>{events.slice(0,3).map(e=><div className="commitment-row" key={e.id}><span className={`event-dot ${e.color}`}/><CalendarDays size={17}/><strong>{e.title}</strong><small>{new Date(`${e.date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})} · {e.time}</small><span className="pill green-pill">Confirmed</span></div>)}</Card><Card className="recent"><div className="card-heading"><div><h3>Recent activity</h3><p>Latest updates to your assistant</p></div><MoreHorizontal size={19}/></div>{['Learned a preference from your recent notes','Created a reply draft for Bilal','Added a new knowledge source','Detected an event in a chat'].map((t,i)=><div className="activity-row" key={t}><span className="activity-dot"/><div><p>{t}</p><small>{['20 minutes ago','1 hour ago','3 hours ago','Yesterday'][i]}</small></div></div>)}</Card></div><div className="quick-actions"><Button onClick={()=>setPage('Add Knowledge')}><Plus size={17}/> Add knowledge</Button><Button variant="secondary" onClick={()=>setPage('Privacy')}><Shield size={17}/> Privacy controls</Button><Button variant="secondary" onClick={onInvite}><Users size={17}/> Invite someone</Button></div></>
-}
-
-function AddKnowledge({ uploadName, setUploadName, keepFiles, setKeepFiles, onProcess }: { uploadName:string; setUploadName:(s:string)=>void; keepFiles:boolean; setKeepFiles:(v:boolean)=>void; onProcess:(s:string)=>void }) {
-  const [source,setSource]=useState('WhatsApp chat'); const [typed,setTyped]=useState('');
-  return <div className="columns knowledge-columns"><div className="stack"><div className="source-tabs">{[['Type it in',Pencil],['WhatsApp chat',MessageSquare],['PDF file',FileText],['Word document',FileText]].map(([name,Icon]:any)=><button key={name} className={source===name?'chosen':''} onClick={()=>setSource(name)}><span><Icon size={19}/></span>{name}</button>)}</div>{source==='Type it in'?<Card className="typed-card"><h3>Add a note</h3><p>Type a preference, fact or commitment for your assistant to remember.</p><textarea value={typed} onChange={e=>setTyped(e.target.value)} placeholder="For example: I prefer short emails and avoid meetings on Friday afternoons." rows={9}/><div className="form-row"><label>Category<select><option>Fact</option><option>Preference</option><option>Commitment</option><option>Person</option></select></label></div></Card>:<label className="dropzone"><input type="file" accept={source==='PDF file'?'.pdf':source==='Word document'?'.doc,.docx':'.txt,.zip,.json'} onChange={e=>setUploadName(e.target.files?.[0]?.name??'')}/><span className="upload-icon"><Upload size={24}/></span><strong>{uploadName||`Drop your ${source==='WhatsApp chat'?'WhatsApp export':source==='PDF file'?'PDF file':'Word document'} here`}</strong><small>Supports .txt or .zip files. Or <u>browse files</u></small><span className="file-limit">Maximum file size: 50 MB</span>{uploadName&&<span className="selected-file"><Paperclip size={15}/>{uploadName}</span>}</label>}<Card><h3>Before we process this {source==='Type it in'?'note':'file'}:</h3><label className="setting-row"><span>Extract facts, people mentioned, preferences and upcoming events</span><input type="checkbox" defaultChecked/></label><label className="setting-row"><span>Make approved items available to personalize drafted replies</span><input type="checkbox" defaultChecked/></label><div className="setting-row"><span>Keep the original file after processing</span><Switch checked={keepFiles} onChange={setKeepFiles}/></div></Card><div className="action-row"><Button onClick={()=>onProcess(source==='Type it in'?typed.trim():uploadName)}><Sparkles size={17}/> Process information</Button><Button variant="quiet" onClick={()=>{setUploadName('');setTyped('')}}>Clear</Button></div></div><div className="stack"><Card><div className="card-heading"><div><h3>Processing queue</h3><p>Recent knowledge sources</p></div><span className="pill">3 items</span></div>{[['Chat_Sana_Oct2026.zip','1.4 MB','Processing · 65%','progress'],['Project_Proposal.pdf','4.2 MB','Added to review queue','success'],['Draft_Agreement_V2.docx','310 KB','Could not read this file','error']].map(([file,size,status,tone]:any)=><div className="queue-item" key={file}><div className="queue-top"><FileText size={17}/><strong>{file}</strong><small>{size}</small></div><p className={tone}>{status}</p>{tone==='progress'&&<div className="progress"><i/></div>}</div>)}</Card><div className="privacy-note"><ShieldCheck/><div><strong>You stay in control</strong><p>Only information you choose to process is added. Review extracted items before they become part of your assistant's knowledge.</p></div></div><Card className="tip-card"><h3>What can I add?</h3><p>Manual notes and chat exports help your assistant learn your preferences, important people, events and commitments.</p><button className="text-button">View supported formats <ArrowRight size={15}/></button></Card></div></div>
-}
-
-function KnowledgeReview({ facts, activeFilter, setActiveFilter, onApprove, onEdit, onDismiss, onEventSave }: { facts:Fact[]; activeFilter:string; setActiveFilter:(s:string)=>void; onApprove:(id:number)=>void; onEdit:(f:Fact)=>void; onDismiss:(id:number)=>void; onEventSave:()=>void }) {
-  const tabs=['All','Fact','Person','Event','Preference','Commitment'];
-  return <div className="columns review-columns"><div className="stack"><div className="review-toolbar"><div className="filter-tabs">{tabs.map(t=><button key={t} className={activeFilter===t?'active':''} onClick={()=>setActiveFilter(t)}>{t}{t==='All'&&<span>{facts.length}</span>}</button>)}</div><Button onClick={()=>facts.forEach(f=>onApprove(f.id))}><Check size={16}/> Approve all</Button></div><Card className="table-card"><div className="review-table-head"><span>Type</span><span>What your assistant found</span><span>Source</span><span>Action</span></div>{facts.length?facts.map(f=><div className="review-row" key={f.id}><span><i className={`type-tag ${f.type.toLowerCase()}`}>{f.type}</i></span><strong>{f.text}</strong><small>{f.source}</small><span className="row-actions"><button className="button secondary compact" onClick={()=>onEdit(f)}>Edit</button><button className="button primary compact" onClick={()=>onApprove(f.id)}>Approve</button><button className="icon-button dismiss" title="Dismiss" onClick={()=>onDismiss(f.id)}><X size={16}/></button></span></div>):<div className="empty-state"><CheckCircle2/><h3>All caught up</h3><p>No {activeFilter.toLowerCase()} items need review.</p></div>}</Card></div><div className="stack"><Card className="event-editor"><h3>Detected event</h3><p className="muted">Confirm details before adding an event.</p><label>Event title<input defaultValue="Meeting on Tuesday at HQ Office"/></label><label>Date<input type="date" defaultValue="2026-10-13"/></label><label>Time<input type="time" defaultValue="15:00"/></label><label>Remind me<select><option>30 minutes before</option><option>10 minutes before</option><option>1 hour before</option><option>No reminder</option></select></label><div className="action-row end"><Button variant="secondary">Cancel</Button><Button onClick={onEventSave}>Save to calendar</Button></div></Card><Card className="profile-card"><h3>Your knowledge profile</h3>{[['Facts',48,'blue'],['People',31,'orange'],['Preferences',17,'purple'],['Events',12,'green'],['Commitments',10,'red']].map(([name,count,color]:any)=><div className="profile-count" key={name}><span className={`profile-bullet ${color}`}/><span>{name}</span><strong>{count} confirmed</strong></div>)}</Card></div></div>
-}
-
-function Assistant({ replies, onSend, onDismiss, onInvite, chatText, setChatText, onSuggest }: { replies:Reply[]; onSend:(id:number)=>void; onDismiss:(id:number)=>void; onInvite:()=>void; chatText:string; setChatText:(s:string)=>void; onSuggest:()=>void }) {
-  const [selected,setSelected]=useState<number|null>(replies[0]?.id??null); const current=replies.find(r=>r.id===selected)??replies[0];
-  return <div className="assistant-layout"><Card className="conversation-list"><div className="card-heading"><div><h3>Conversations</h3><p>Private to your workspace</p></div><Button onClick={onInvite}><Plus size={16}/> Invite</Button></div><label className="search-box"><Search size={16}/><input placeholder="Find a conversation"/></label>{replies.map(r=><button key={r.id} className={`conversation-item ${current?.id===r.id?'selected':''}`} onClick={()=>setSelected(r.id)}><div className="person-avatar">{r.name.charAt(0)}</div><div><strong>{r.name}</strong><small>{r.message}</small></div><span className="unread-dot"/></button>)}{!replies.length&&<div className="empty-state small-empty">No pending drafts</div>}</Card><div className="chat-column"><Card className="chat-card"><div className="chat-head"><div className="person-avatar">{current?.name.charAt(0)??'?'}</div><div><strong>{current?.name??'Choose a conversation'}</strong><small>Private conversation</small></div><span className="mode-pill"><ShieldCheck size={14}/>{current?.mode==='Automatic'?'Automatic mode':'Approval mode'}</span></div><div className="chat-messages"><div className="message received"><small>{current?.name??'Contact'}</small><p>{current?.message??'No messages here yet.'}</p><time>Today, 10:32 AM</time></div><div className="message draft"><span className="draft-label"><Sparkles size={14}/> CloneBot draft · needs your approval</span><p>{current?.draft??'Draft replies will appear here for your review.'}</p><time>Suggested using your approved knowledge</time></div></div><div className="chat-compose"><input value={chatText} onChange={e=>setChatText(e.target.value)} placeholder="Write a message or ask for a draft…" onKeyDown={e=>e.key==='Enter'&&onSuggest()}/><button onClick={onSuggest} aria-label="Create reply draft"><Send size={18}/></button></div></Card><div className="draft-actions"><span><Shield size={16}/> You always control what gets sent.</span><div><Button variant="secondary" onClick={()=>current&&onDismiss(current.id)}><X size={16}/> Dismiss</Button><Button onClick={()=>current&&onSend(current.id)}><Check size={16}/> Approve and send</Button></div></div></div></div>
-}
-
-function CalendarPage({ events, onNew, onEdit, onDelete }: { events:EventItem[]; onNew:()=>void; onEdit:(e:EventItem)=>void; onDelete:(id:number)=>void }) {
-  const [month,setMonth]=useState(new Date(2026,9,1)); const [weekView,setWeekView]=useState(false); const start=new Date(month.getFullYear(),month.getMonth(),1); const offset=(start.getDay()+6)%7; const count=new Date(month.getFullYear(),month.getMonth()+1,0).getDate();
-  const dayCells=Array.from({length:42},(_,i)=>{const d=i-offset+1;return d<1?{day:new Date(month.getFullYear(),month.getMonth(),d).getDate(),outside:true,date:new Date(month.getFullYear(),month.getMonth(),d)}:d>count?{day:new Date(month.getFullYear(),month.getMonth(),d).getDate(),outside:true,date:new Date(month.getFullYear(),month.getMonth(),d)}:{day:d,outside:false,date:new Date(month.getFullYear(),month.getMonth(),d)}})
-  const listEvents=[...events].sort((a,b)=>a.date.localeCompare(b.date));
-  return <div className="columns calendar-columns"><div className="stack"><div className="calendar-toolbar"><Button onClick={onNew}><Plus size={16}/> New event</Button><label className="integration-toggle"><span>Calendar sync</span><span className="future-tag">Coming later</span></label><div className="view-toggle"><button className={!weekView?'selected':''} onClick={()=>setWeekView(false)}>Month</button><button className={weekView?'selected':''} onClick={()=>setWeekView(true)}>Week</button></div></div><Card className="month-card"><div className="month-title"><h3>{month.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</h3><div><button className="icon-button" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()-1,1))}><ChevronLeft/></button><button className="icon-button" onClick={()=>setMonth(new Date(month.getFullYear(),month.getMonth()+1,1))}><ChevronRight/></button></div></div><div className="calendar-grid">{['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=><strong className="weekday" key={d}>{d}</strong>)}{dayCells.map((c,i)=>{const dateKey=`${c.date.getFullYear()}-${String(c.date.getMonth()+1).padStart(2,'0')}-${String(c.day).padStart(2,'0')}`;const dayEvents=events.filter(e=>e.date===dateKey);return <div key={i} className={`calendar-cell ${c.outside?'outside':''}`}><span>{c.day}</span>{dayEvents.map(e=><button key={e.id} className={`calendar-event ${e.color}`} onClick={()=>onEdit(e)}>{e.title}</button>)}</div>})}</div></Card></div><div className="stack"><Card className="reminder-feature"><span className="pill translucent"><Bell size={13}/> Your reminders</span><h3>Stay on top of what matters</h3><p>Confirmed commitments and events, all in one place.</p><Button variant="secondary" onClick={onNew}>Add an event</Button></Card><Card className="upcoming-card"><div className="card-heading"><h3>Upcoming events</h3><button className="text-button" onClick={onNew}><Plus size={15}/> Add new</button></div>{listEvents.map(e=><div className="upcoming-event" key={e.id}><span className={`event-dot ${e.color}`}/><div><strong>{e.title}</strong><small>{new Date(`${e.date}T12:00:00`).toLocaleDateString('en-US',{month:'short',day:'numeric'})}, {e.time}</small></div><button className="icon-button" onClick={()=>onEdit(e)} title="Edit"><Pencil size={15}/></button><button className="icon-button danger-icon" onClick={()=>onDelete(e.id)} title="Delete"><Trash2 size={15}/></button></div>)}{!listEvents.length&&<p className="muted">No events yet.</p>}</Card></div></div>
-}
-
-function PrivacyPage({ keepFiles, setKeepFiles, learning, setLearning, personalize, setPersonalize, factsCount, onDelete }: { keepFiles:boolean; setKeepFiles:(v:boolean)=>void; learning:boolean; setLearning:(v:boolean)=>void; personalize:boolean; setPersonalize:(v:boolean)=>void; factsCount:number; onDelete:(what:string)=>void }) {
-  return <div className="columns privacy-columns"><div className="stack"><div className="privacy-note large"><ShieldCheck/><div><strong>Your data is private</strong><p>You choose which information CloneBot processes, keeps and learns from. Privacy controls shown here are demo settings.</p></div></div><Card><h3>What CloneBot may do</h3><Setting title="Process selected content" description="Allow new knowledge sources to be reviewed." checked={true} onChange={()=>{}} disabled/><Setting title="Store approved knowledge" description="Keep confirmed facts in your knowledge profile." checked={true} onChange={()=>{}}/><Setting title="Personalize replies" description="Use approved knowledge in draft suggestions." checked={personalize} onChange={setPersonalize}/><Setting title="Keep original files" description="Retain uploaded source files after processing." checked={keepFiles} onChange={setKeepFiles}/><Setting title="Automatic learning" description="Add new facts without the review queue." checked={learning} onChange={setLearning}/><Setting title="Save interaction history" description="Keep previous draft decisions for your reference." checked={true} onChange={()=>{}} disabled/></Card></div><div className="stack"><Card className="storage-card"><h3>Knowledge profile</h3><div className="storage-chart"><div className="donut"><strong>{factsCount}</strong><small>items</small></div><div className="storage-legend">{[['Facts',48,'purple'],['People',31,'blue'],['Preferences',17,'orange'],['Events',12,'green'],['Commitments',10,'gray']].map(([label,n,c]:any)=><div key={label}><i className={`profile-bullet ${c}`}/><span>{label}</span><strong>{n}</strong></div>)}</div></div><p className="muted note-divider">Original files are removed after processing unless you choose to keep them.</p></Card><Card className="delete-card"><h3>Delete data</h3><p>Remove saved information from this demo.</p>{[['Delete interaction history','History'],['Delete entire knowledge profile','Knowledge profile'],['Delete my account and all data','Account']].map(([label,key])=><div className="delete-row" key={key}><span>{label}</span><Button variant="danger" onClick={()=>onDelete(key)}>{key==='Account'?'Delete account':'Delete'}</Button></div>)}</Card></div></div>
-}
-
-function SettingsPage({ assistantOn, setAssistantOn, replyMode, setReplyMode, allowTypes, setAllowTypes, learning, setLearning, personalize, setPersonalize, onSave }:any) {
-  const setType=(key:keyof typeof allowTypes,val:boolean)=>setAllowTypes((old:any)=>({...old,[key]:val}));
-  return <><div className="columns settings-columns"><div className="stack"><Card><div className="setting-main"><div><strong>Assistant status</strong><p>Allow CloneBot to process knowledge and draft replies.</p></div><Switch checked={assistantOn} onChange={setAssistantOn}/></div></Card><Card><h3>Reply mode</h3><p className="muted">Choose how the assistant handles replies.</p>{[['Approval mode','CloneBot drafts replies; you approve before they are sent.'],['Automatic mode','Drafted replies are sent to trusted contacts automatically.']].map(([title,desc])=><button key={title} className={`mode-option ${replyMode===title?'selected':''}`} onClick={()=>setReplyMode(title)}><ShieldCheck/><div><strong>{title}</strong><small>{desc}</small></div><span className="radio-dot"/></button>)}<div className="contact-modes"><strong>Automatic mode applies to</strong>{['Bilal','Sana','Hamza'].map((name,i)=><div key={name}><span>{name}</span><Switch checked={i!==1} onChange={()=>{}} label={`Automatic replies for ${name}`}/></div>)}</div></Card></div><div className="stack"><Card><h3>Data permissions</h3><p className="muted">Choose the source types CloneBot may learn from.</p><Setting title="Manual notes and typing" checked={allowTypes.notes} onChange={(v:boolean)=>setType('notes',v)}/><Setting title="WhatsApp exports" checked={allowTypes.whatsapp} onChange={(v:boolean)=>setType('whatsapp',v)}/><Setting title="PDF documents" checked={allowTypes.pdf} onChange={(v:boolean)=>setType('pdf',v)}/><Setting title="Word documents (.docx)" checked={allowTypes.word} onChange={(v:boolean)=>setType('word',v)}/></Card><Card><h3>Learning settings</h3><Setting title="Automatic learning" description="Instantly extract knowledge from new sources." checked={learning} onChange={setLearning}/><Setting title="Use knowledge for personalization" description="Use approved preferences and facts in drafts." checked={personalize} onChange={setPersonalize}/></Card></div></div><div className="action-row end settings-actions"><Button variant="secondary" onClick={()=>{setAssistantOn(true);setReplyMode('Approval mode');onSave()}}>Reset</Button><Button onClick={onSave}><Check size={16}/> Save settings</Button></div></>
-}
-
-function Setting({ title, description, checked, onChange, disabled=false }: { title:string; description?:string; checked:boolean; onChange:(v:boolean)=>void; disabled?:boolean }) { return <div className="setting-row"><div><strong>{title}</strong>{description&&<small>{description}</small>}</div><Switch checked={checked} onChange={onChange} label={title} disabled={disabled} /></div> }
-
-function InviteModal({ onClose,onSubmit }: { onClose:()=>void; onSubmit:()=>void }) { const [mode,setMode]=useState('Suggest replies'); return <div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><form className="modal invite-modal" onSubmit={e=>{e.preventDefault();onSubmit()}}><button className="modal-close" type="button" onClick={onClose}><X/></button><div className="modal-icon aqua"><Users/></div><h2>Invite someone to chat</h2><p>They will only see their conversation with you.</p><label>Their name<input placeholder="Name" required/></label><label>Email address<input type="email" placeholder="name@example.com" required/></label><span className="field-title">Your assistant in this conversation</span><div className="mode-cards">{[['Suggest replies','I approve each one before sending.'],['Reply automatically','Needs confirmation for custom rules.']].map(([name,desc])=><button type="button" className={`mode-card ${mode===name?'selected':''}`} key={name} onClick={()=>setMode(name)}><strong>{name}</strong><small>{desc}</small><span className="radio-dot"/></button>)}</div><label className="check-label"><input type="checkbox" defaultChecked/>Private invitation link for this conversation only</label><div className="action-row end"><Button variant="quiet" onClick={onClose}>Cancel</Button><Button type="submit"><Send size={16}/> Send invitation</Button></div><small className="demo-disclaimer">Demo only: invitations are not sent yet.</small></form></div> }
-
-function EventModal({ event,setEvent,onClose,onSave }: { event:EventItem; setEvent:(e:EventItem)=>void; onClose:()=>void; onSave:()=>void }) { return <div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><form className="modal event-modal" onSubmit={e=>{e.preventDefault();onSave()}}><button className="modal-close" type="button" onClick={onClose}><X/></button><div className="modal-icon"><CalendarDays/></div><h2>{event.title?'Edit event':'New event'}</h2><p>Add a reminder to your personal calendar.</p><label>Event title<input value={event.title} onChange={e=>setEvent({...event,title:e.target.value})} placeholder="What do you need to remember?" required/></label><div className="form-row"><label>Date<input type="date" value={event.date} onChange={e=>setEvent({...event,date:e.target.value})}/></label><label>Time<input type="time" value={event.time.includes('PM')?'15:00':'10:00'} onChange={e=>setEvent({...event,time:e.target.value})}/></label></div><label>Remind me<select value={event.reminder} onChange={e=>setEvent({...event,reminder:e.target.value})}><option>30 minutes before</option><option>10 minutes before</option><option>1 hour before</option><option>No reminder</option></select></label><div className="action-row end"><Button variant="secondary" onClick={onClose}>Cancel</Button><Button type="submit">Save event</Button></div></form></div> }
-function HelpModal({onClose,onReset}:{onClose:()=>void;onReset:()=>void}) { return <div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><div className="modal help-modal"><button className="modal-close" onClick={onClose}><X/></button><div className="modal-icon"><CircleHelp/></div><h2>CloneBot help</h2><p>Your demo data is saved in this browser on this device, so it is still here if you refresh the page. It is not sent to a server or shared with teammates. Sign-in, uploads, invitations and reminders are still demos.</p><div className="storage-actions"><Button variant="secondary" onClick={onClose}>Close</Button><Button variant="danger" onClick={onReset}>Reset demo data</Button></div></div></div> }
